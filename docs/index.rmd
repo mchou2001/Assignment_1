@@ -1,0 +1,305 @@
+---
+title: "Assignment 1: Exploring Descriptive Statistics for Priming Experiment"
+author: "10466486"
+output: 
+  html_document: 
+    toc: TRUE
+    toc_float: TRUE
+    toc_depth: 2
+    number_sections: TRUE
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+We will run descriptive statistics on a set of data gathered from a priming experiment. The end objective is to understand the data further and be able to visualize its distribution.
+
+A priming experiment involving 48 participants was conducted. Participants were shown either a priming number or a letter 20 milliseconds before the stimuli. Stimuli shown includes a letter or number either congruent or incongruent to the primer. The time people spent identifying the stimuli was measured in milliseconds (ms).
+
+# Setup
+In this section we will make the preparations needed to start looking at the data.
+
+Loading packages needed for this project.
+```{r load_package, message = FALSE}
+library(tidyverse) # Used for various commands such as ggplot and read_csv
+library(moments) # Used for calculating skewness and kurtosis
+```
+
+Read the data into R Studio and assign a name to the data frame.
+```{r read_data, message = FALSE}
+original_data <- read_csv("https://raw.githubusercontent.com/mchou2001/Advanced-Data-Skills/main/assignment_1_data.csv") # Data read from an open online repository
+
+copy_data <- original_data # This was done to preserve the original data frame
+```
+
+This is the table produced from the original data. Looking at the data frame, the column labels and the reaction time values should be given more meaning.
+```{r original_data_table_1.1, echo=FALSE}
+print(original_data)
+```
+
+# Data Wrangling {.tabset .tabset-fade .tabset-pills}
+In this section we will look at how to organize the data into a more meaningful data frame.
+
+## Renaming Columns
+Columns were renamed with meaningful labels.
+```{r change_column_name}
+colnames(copy_data) <- c(
+  "participant", "congruent_number", "incongruent_number", "incongruent_letter", "congruent_letter"
+)
+
+# Renamed columns based on snake case names per tidyverse convention
+```
+
+This is the table that is produced. The column name has been changed to the specified label.
+```{r table_2.1, echo=FALSE}
+print(copy_data)
+```
+
+## Combining Columns
+Combine all conditions into one column so data visualization for reaction time can be conducted.
+```{r combine_conditions}
+tidied_data <- copy_data %>% # variable names kept simple and meaningful
+  pivot_longer(
+    cols = c(
+      "congruent_number", "incongruent_number", "incongruent_letter", "congruent_letter"
+    ), # Creates new column
+    names_to = "conditions", # Gives name to column
+    values_to = "reaction_time"
+  ) # Puts values under yet another column
+```
+
+The table produced only uses 1 column for all conditions.
+```{r table_2.2, echo=FALSE}
+print(tidied_data)
+```
+
+# Summary Statistics {.tabset .tabset-fade .tabset-pills}
+Here we are going to find out the summary statistics for comparing individual participants with themselves and between conditions.
+
+## Within Summary Statistic
+The within summary statistic is created by looking at the performance of each individual participants regardless of condition.
+
+```{r within_stat}
+within_stat <- tidied_data %>%
+  group_by(participant) %>% # Groups participants together
+  summarise(
+    Mean = mean(reaction_time),
+    Median = median(reaction_time),
+    St_Dev = sd(reaction_time),
+    Range = max(reaction_time) - min(reaction_time),
+    Maximum = max(reaction_time),
+    Minimum = min(reaction_time)
+  ) # Creates a new data frame using new calculated values
+```
+
+From a simple inspection it can be seen that the mean and median reaction times are similar for all participants which would indicate that there are no participants that are inherently faster or slower than others. More can be seen when visualized.
+
+```{r, echo = FALSE}
+print(within_stat)
+```
+
+## Between Summary Statistic
+The between summary statistic is created by looking at the performance of participants by the conditions they are in.
+
+```{r between_stat}
+between_stat <- tidied_data %>%
+  group_by(conditions) %>% # Groups conditions together
+  summarise(
+    Mean = mean(reaction_time),
+    Median = median(reaction_time),
+    St_Dev = sd(reaction_time),
+    Skewness = skewness(reaction_time),
+    Kurtosis = kurtosis(reaction_time),
+    Range = max(reaction_time) - min(reaction_time),
+    Maximum = max(reaction_time),
+    Minimum = min(reaction_time)
+  ) # Creates a new data frame using new calculated values
+```
+
+From a simple inspection of the mean and median of the reaction times, congruent conditions seem to be faster than incongruent conditions. Furthermore, there seem to be little difference between either congruent letter and number or incongruent letter and number.
+
+For skewness, both congruent number and incongruent letter have values between -0.5 and 0.5, close to 0, indicating slight to no skew. However, the distribution of congruent letter is negatively skewed (<-0.5), while the incongruent number is positvely skewed (>0.5).
+
+For kurtosis, the values of all conditions are close to 3 which indicates a mesokurtic distribution for its peak. The congruent letter condition deviates the furthest from a mesokurtic distribution towards a leptokurtic distribution.
+
+```{r, echo = FALSE}
+print(between_stat)
+```
+
+# Illustrating Skewness and Kurtosis
+Although I can read what the skewness and kurtosis is by the summary statistics, I don't know what it looks like. I want to be able to picture it. This will be done through the use of Quantile - Quantile plots (Q-Q plots). 
+
+Q-Q plots can be used to provide simple visualization to suggest how close the distribution is to a normal distribution. 
+
+```{r qqplots, eval = FALSE}
+attach(copy_data) # Combine plots created from the same data frame together
+
+par(mfrow = c(2, 2)) # Creates a 2 by 2 matrix for the plots
+
+# Q-Q plot for Congruent Number (top left position [1,1])
+qqnorm(copy_data$congruent_number) # Plots quantiles from Congruent_number against quantiles from
+#  a normal distribution
+qqline(copy_data$congruent_number) # Draws line for perfect fit
+
+# Q-Q plot for Incongruent Number (top right position [1,2])
+qqnorm(copy_data$incongruent_number)
+qqline(copy_data$incongruent_number)
+
+# Q-Q plot for Congruent Letter (bottom left position [2,1])
+qqnorm(copy_data$congruent_letter)
+qqline(copy_data$congruent_letter)
+
+# Q-Q plot for Incongruent Letter (bottom right position [2,2])
+qqnorm(copy_data$incongruent_letter)
+qqline(copy_data$incongruent_letter)
+
+detach(copy_data, unload = FALSE) # Detach is important to stop unwanted future attachments
+```
+
+Looking at the Q-Q plots there does not seem to be a particular skew for any of the 4 conditions, with a concave shape for negative skew or convex shape for positive skew, fitting closely with the normal distribution. This isn't clear. All conditions could also be slightly heavy-tailed with most points gathered in the center, this isn't clear either. Assessing visually would be difficult because of the low number of subject (n = 48).
+
+```{r qqplots_visulization, echo = FALSE, message = FALSE}
+attach(copy_data)
+
+par(mfrow = c(2, 2))
+
+qqnorm(copy_data$congruent_number)
+qqline(copy_data$congruent_number)
+
+qqnorm(copy_data$incongruent_number)
+qqline(copy_data$incongruent_number)
+
+qqnorm(copy_data$congruent_letter)
+qqline(copy_data$congruent_letter)
+
+qqnorm(copy_data$incongruent_letter)
+qqline(copy_data$incongruent_letter)
+
+detach(copy_data, unload = FALSE)
+```
+
+# Distribution of Data {.tabset .tabset-fade .tabset-pills}
+More visualizations were created to picture the distribution of the data.
+
+## Scatterplot
+The scatter plot compared participants based on their mean reaction times across all conditions. 
+
+```{r scatter_plot_code, eval = FALSE}
+tidied_data %>%
+  ggplot(aes(x = participant, y = reaction_time)) + # Appoints x and y for plot
+  stat_summary(fun = mean, geom = "point") + # Plot y with mean on scatter plot
+  geom_smooth() + # Draws best fit line and standard error area
+  labs(
+    x = "Participants",
+    y = "Mean Reaction Time (ms)",
+    title = "Variation of Mean Reaction Time Within Participants"
+  ) + # Edit labels
+  theme(plot.title = element_text(hjust = .5)) # Moves plot along horizontal axis
+
+# geom_smooth creates a LOESS best fit line by default and adds standard error based on a 95%
+# confidence interval
+```
+
+The relatively flat best fit line and uniform shape of standard error across participants can signify that all participant's reaction speeds are similar. This fits with what was observed during summary statistics 1 where mean and median reaction times within participants were similar across all participants.
+
+```{r scatter_plot, echo = FALSE, message = FALSE}
+tidied_data %>%
+  ggplot(aes(x = participant, y = reaction_time)) +
+  stat_summary(fun = mean, geom = "point") +
+  geom_smooth() +
+  labs(
+    x = "Participants",
+    y = "Mean Reaction Time (ms)",
+    title = "Variation of Mean Reaction Time Within Participants"
+  ) +
+  theme(plot.title = element_text(hjust = .5))
+```
+
+## Kernel Density Plot 
+The kernel density plot similar to a histogram will look at the distribution based on frequency of reaction times. However, instead of counting discrete frequencies, densities are calculated for the probability the data points belong in a given area, thereby making it suitable for counting continuous data.
+
+```{r density_plot_code, eval = FALSE}
+tidied_data %>%
+  ggplot(aes(x = reaction_time, fill = conditions)) + # Appoints the x and fill for plot
+  geom_density(alpha = .5) + # Alpha changes transparency of plot
+  labs(
+    x = "Reaction Time (ms)",
+    y = "Density",
+    title = "Distribution of Reaction Times Accross Conditions"
+  ) + # Edit labels
+  theme(plot.title = element_text(hjust = .5)) # Moves plot along horizontal axis
+
+# Fill is different from color only changing the color within the shape
+# Color changes the outline as well
+```
+
+The plot demonstrates how both congruent conditions have very similar and lower reaction times compared to incongruent conditions. Inversely, both incongruent conditions have a similar and higher reaction time compared to congruent conditions.
+
+```{r density_plot, echo = FALSE}
+tidied_data %>%
+  ggplot(aes(x = reaction_time, fill = conditions)) +
+  geom_density(alpha = .5) +
+  labs(
+    x = "Reaction Time (ms)",
+    y = "Density",
+    title = "Distribution of Reaction Times Accross Conditions"
+  ) +
+  theme(plot.title = element_text(hjust = .5))
+```
+
+## Dot Plot
+The dot plot is used here to observe the distribution of reaction times for the different conditions. In the plot I added a line for standard deviation and rearranged for number condtions to beside each other, and letter conditions to be beside each other. The reason is to compare the difference between the incongruent and congruent conditions based on number or letter.
+
+```{r dot_plot_code, eval = FALSE}
+tidied_data %>%
+  ggplot(aes(x = conditions, y = reaction_time, fill = conditions)) + # Appoints x and y value
+  #  and fill for plot
+  geom_dotplot(
+    binaxis = "y", # Group the y value in groups of discrete data points
+    stackdir = "center", # Stack dots from the center
+    stackratio = 1.5, # Changes how close dots stack
+    dotsize = 0.5
+  ) + # Changes size of dots
+  stat_summary(
+    fun.data = mean_sdl, # Plot standard deviation for y value
+    geom = "pointrange", # Represent standard deviation with point range
+    size = .5,
+  ) + # Changes size of dot
+  guides(fill = "none") + # Removes legend
+  scale_x_discrete(limits = c(
+    "incongruent_number", "congruent_number", "incongruent_letter", "congruent_letter"
+  )) + # Reordering of values
+  #  along x axis
+  labs(
+    x = "", # Left blank to remove label for x-axis
+    y = "Reaction Time (ms)",
+    title = "Dotplot of Reaction Time Accross Conditions"
+  ) + # Changes labels
+  theme(plot.title = element_text(hjust = .5)) # Move title along the horizontal axis
+```
+
+Through visual inspection, a clear lack of overlap between the standard deviation of condition groups show a definitive difference between the incongruent and congruent for both number and letters conditions.
+
+```{r dot_plot, echo = FALSE, message = FALSE}
+tidied_data %>%
+  ggplot(aes(x = conditions, y = reaction_time, fill = conditions)) +
+  geom_dotplot(
+    binaxis = "y",
+    stackdir = "center",
+    stackratio = 1.5,
+    dotsize = 0.5
+  ) +
+  stat_summary(fun.data = mean_sdl, geom = "pointrange", size = .5) +
+  guides(fill = "none") +
+  scale_x_discrete(limits = c(
+    "incongruent_number", "congruent_number",
+    "incongruent_letter", "congruent_letter"
+  )) +
+  labs(
+    x = "",
+    y = "Reaction Time (ms)",
+    title = "Dotplot of Reaction Time Accross Conditions"
+  ) +
+  theme(plot.title = element_text(hjust = .5))
+```
